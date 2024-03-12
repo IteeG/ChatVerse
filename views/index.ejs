@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Socket.IO chat</title>
+    <style>
+      body { margin: 0; padding-bottom: 3rem; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+
+      #form { background: rgba(0, 0, 0, 0.15); padding: 0.25rem; position: fixed; bottom: 0; left: 0; right: 0; display: flex; height: 3rem; box-sizing: border-box; backdrop-filter: blur(10px); }
+      #input { border: none; padding: 0 1rem; flex-grow: 1; border-radius: 2rem; margin: 0.25rem; }
+      #input:focus { outline: none; }
+      #form > button { background: #333; border: none; padding: 0 1rem; margin: 0.25rem; border-radius: 3px; outline: none; color: #fff; }
+
+      #messages { list-style-type: none; margin: 0; padding: 0; }
+      #messages > li { padding: 0.5rem 1rem; }
+      #messages > li:nth-child(odd) { background: #efefef; }
+    </style>
+  </head>
+  <body>
+    <p>Room ID: <%= roomId %></p>
+    <p>User ID: <%= userId %></p>
+    <input type="hidden" id="userId" value="<%= userId %>">
+    <input type="hidden" id="roomId" value="<%= roomId %>">
+    <ul id="messages"></ul>
+    <form id="form" action="">
+      <!-- <input id="input" autocomplete="off" /><button>Send</button> -->
+      <input id="input" autocomplete="off" /><button id="sendButton">Send</button><button id="groupButton">Send to Group</button>
+    
+    </form>
+
+    <form id="getMessages" action="">
+      <input id="receiverUserId" autocomplete="off" type="text"><button id="getPrivateMessageButton">getprivateMessage</button>
+      <button id="getGroupMessageButton">getGroupMessage</button>
+    </form>
+  </body>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const form = document.getElementById('form');
+    const getMessages = document.getElementById('getMessages');
+    const input = document.getElementById('input');
+    const messages = document.getElementById('messages');
+
+    const sendButton = document.getElementById('sendButton');
+    const groupButton = document.getElementById('groupButton');
+
+    const getPrivateMessageButton = document.getElementById('getPrivateMessageButton');
+    const getGroupMessageButton = document.getElementById('getGroupMessageButton');
+
+
+    const userId = document.getElementById('userId').value;
+    const roomId = document.getElementById('roomId').value;
+
+    const receiverUserId = document.getElementById('receiverUserId');
+
+    // Now you can use userId and roomId in your script
+    console.log('User ID:', userId);
+    console.log('Room ID:', roomId);
+
+
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      // if (input.value) {
+      //   console.log(input.value)
+      //   socket.emit('chat message', input.value);
+      //   input.value = '';
+      // }
+      // sendMessage();
+    });
+    getMessages.addEventListener('submit',(e)=>{
+      e.preventDefault();
+    })
+
+    sendButton.addEventListener('click', () => {
+      sendMessage();
+    });
+
+    groupButton.addEventListener('click', () => {
+      sendGroupMessage();
+    });
+
+    getPrivateMessageButton.addEventListener('click',()=>{
+      getPrivateMessage();
+    })
+
+    getGroupMessageButton.addEventListener('click',()=>{
+      getGroupMessage();
+    })
+
+    function  getPrivateMessage(){
+      if(receiverUserId.value){
+        const fromUserId = userId;
+        socket.emit('get chat message', fromUserId, receiverUserId.value, (data)=>{
+          console.log("data received between users are ", data, fromUserId, receiverUserId);
+        });
+      }
+    }
+
+    function getGroupMessage(){
+      console.log("roomId for get group message is ",roomId);
+      socket.emit('get group message', roomId, (data)=>{
+        console.log("data received in the roomId is ", data, roomId);
+      });
+
+
+    }
+
+    function sendMessage() {
+      if (input.value) {
+        const toUserId ="007";
+        const fromUserId=userId;
+        socket.emit('chat message', input.value,toUserId , fromUserId); // Emit the value of the input field
+        input.value = '';
+      }
+    }
+
+    function sendGroupMessage() {
+      if (input.value) {
+        const fromUserId=userId;
+        socket.emit('group message', input.value, roomId,fromUserId); // Emit the value of the input field as a group message
+        input.value = '';
+      }
+    }
+
+    socket.on("connect", () => {
+      console.log("socket is connected", socket.id);
+      socket.emit('subscribe room', userId, roomId);
+      console.log(socket.connected); // true
+    });
+
+    socket.on("disconnect", () => {
+      console.log("socket is disconnected", socket.id);
+      console.log(socket.connected); // false
+    });
+
+    socket.on('chat message', ( msg, toUserId) => {
+      console.log("chat message from userId is", msg, toUserId);
+      const item = document.createElement('li');
+      item.textContent = msg;
+      messages.appendChild(item);
+      window.scrollTo(0, document.body.scrollHeight);
+    });
+
+    socket.on('group message', (msg, roomId)=>{
+      console.log("chat message for group",msg);
+      const item = document.createElement('li');
+      item.textContent = msg;
+      messages.appendChild(item);
+      window.scrollTo(0, document.body.scrollHeight);
+    })
+    
+
+  </script>
+</html>
